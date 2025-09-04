@@ -16,8 +16,8 @@ load_dotenv()
 
 class Config:
     def __init__(self):
-        self.BOT_TOKEN = os.getenv('BOT_TOKEN')
-        self.ADMIN_IDS = [int(id.strip()) for id in os.getenv('ADMIN_IDS', '').split(',') if id.strip()]
+        self.BOT_TOKEN = os.getenv('bot_token')
+        self.ADMIN_IDS = [int(id.strip()) for id in os.getenv('admin_ids', '').split(',') if id.strip()]
         self.LOG_CHAT_ID = os.getenv('LOG_CHAT_ID')
         self.DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
@@ -145,9 +145,9 @@ def create_admin_keyboard():
 
 
 # ==================== ОБРАБОТЧИКИ КОМАНД ====================
-@dp.message_handler(Command('start', 'help'))
+@dp.message_handler(commands=['start'])
 async def cmd_start(message: types.Message):
-    """Обработчик команд /start и /help"""
+    """Обработчик команды /start"""
     user_id = message.from_user.id
 
     welcome_text = (
@@ -171,6 +171,87 @@ async def cmd_start(message: types.Message):
     await message.answer(welcome_text, reply_markup=create_main_keyboard())
     await Form.choosing_category.set()
     await log_action(user_id, "started bot")
+
+
+# ==================== ОБРАБОТЧИКИ КОМАНД ====================
+@dp.message_handler(commands=['start'])
+async def cmd_start(message: types.Message):
+    """Обработчик команды /start"""
+    user_id = message.from_user.id
+
+    welcome_text = (
+        "👋 <b>Добро пожаловать!</b>\n\n"
+        "Я помогу вам сохранить ваше сообщение по категориям.\n\n"
+        "<b>📋 Доступные команды:</b>\n"
+        "/start - начать работу\n"
+        "/help - помощь\n"
+        "/cancel - отменить действие\n"
+    )
+
+    if config.is_admin(user_id):
+        welcome_text += (
+            "/admin - админ-панель\n"
+            "/stats - статистика\n"
+            "/users - пользователи\n"
+            "/broadcast - рассылка\n"
+            "/userinfo - информация о пользователе\n"
+        )
+
+    await message.answer(welcome_text, reply_markup=create_main_keyboard())
+    await Form.choosing_category.set()
+    await log_action(user_id, "started bot")
+
+
+@dp.message_handler(commands=['help'])
+async def cmd_help(message: types.Message):
+    """Обработчик команды /help"""
+    user_id = message.from_user.id
+
+    help_text = (
+        "ℹ️ <b>Помощь по боту:</b>\n\n"
+        "Я сохраняю ваши сообщения по категориям:\n"
+        "💼 <b>Работа</b> - рабочие вопросы\n"
+        "🎓 <b>Учёба</b> - учебные вопросы\n"
+        "📦 <b>Прочее</b> - всё остальное\n\n"
+        "<b>Как использовать:</b>\n"
+        "1. Нажмите /start\n"
+        "2. Выберите категорию\n"
+        "3. Напишите сообщение\n"
+        "4. Сообщение сохранится!\n\n"
+        "<b>Команды:</b>\n"
+        "/start - начать работу\n"
+        "/help - эта справка\n"
+        "/cancel - отменить действие"
+    )
+
+    if config.is_admin(user_id):
+        help_text += (
+            "\n\n<b>👑 Команды администратора:</b>\n"
+            "/admin - панель управления\n"
+            "/stats - статистика бота\n"
+            "/users - список пользователей\n"
+            "/broadcast - рассылка сообщений\n"
+            "/userinfo - информация о пользователе"
+        )
+
+    await message.answer(help_text, reply_markup=types.ReplyKeyboardRemove())  # Закрываем клавиатуру
+    await log_action(user_id, "requested help")
+
+
+@dp.message_handler(commands=['cancel'], state='*')
+async def cmd_cancel(message: types.Message, state: FSMContext):
+    """Отмена текущего действия"""
+    current_state = await state.get_state()
+    if current_state:
+        await state.finish()
+        await message.answer(
+            "❌ Действие отменено.\n\n"
+            "Вы можете начать заново с /start",
+            reply_markup=types.ReplyKeyboardRemove()  # Закрываем клавиатуру
+        )
+        await log_action(message.from_user.id, "cancelled action")
+    else:
+        await message.answer("Нечего отменять 🤷‍♂️", reply_markup=types.ReplyKeyboardRemove())  # Закрываем клавиатуру
 
 
 @dp.message_handler(Command('cancel'), state='*')
