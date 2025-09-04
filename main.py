@@ -16,23 +16,17 @@ load_dotenv()
 
 class Config:
     def __init__(self):
-        load_dotenv()
         self.BOT_TOKEN = os.getenv('BOT_TOKEN')
-
-        # Безопасное получение ADMIN_IDS
-        admin_ids_str = os.getenv('ADMIN_IDS', '')
-        self.ADMIN_IDS = []
-        if admin_ids_str:
-            try:
-                self.ADMIN_IDS = [int(id.strip()) for id in admin_ids_str.split(',') if id.strip()]
-            except ValueError:
-                logger.warning("Неверный формат ADMIN_IDS в .env файле")
-
+        self.ADMIN_IDS = [int(id.strip()) for id in os.getenv('ADMIN_IDS', '').split(',') if id.strip()]
         self.LOG_CHAT_ID = os.getenv('LOG_CHAT_ID')
         self.DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
         if not self.BOT_TOKEN:
             raise ValueError("❌ BOT_TOKEN не найден в .env файле!")
+
+    def is_admin(self, user_id: int) -> bool:
+        return user_id in self.ADMIN_IDS
+
 
 config = Config()
 
